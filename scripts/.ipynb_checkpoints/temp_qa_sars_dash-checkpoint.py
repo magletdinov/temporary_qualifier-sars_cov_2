@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from io import BytesIO
 import base64
+import dash
+import plotly.graph_objs as go
+
 
 # Загружаем модули
 m0 = SourceFileLoader("m", "/export/home/agletdinov/work/git_projects/gitlab/collapse-pango-lineages/modules.py").load_module()
@@ -41,15 +44,6 @@ else:
                    index=False,
                    compression='gzip')
 
-# Функция для конвертации графиков в формат base64 для отображения на дашборде
-def fig_to_base64(fig):
-    buffer = BytesIO()
-    fig.savefig(buffer, format='png')
-    buffer.seek(0)
-    img_bytes = buffer.getvalue()
-    buffer.close()
-    encoded = base64.b64encode(img_bytes).decode('utf-8')
-    return f"data:image/png;base64,{encoded}"
 
 # Создание приложения Dash
 app = dash.Dash(__name__)
@@ -78,34 +72,22 @@ app.layout = html.Div([
 )
 def update_graph(n_clicks, lineage_input, date):
     if n_clicks > 0:
-        start_date = datetime(2020, 1, 1)
-
+        
         # Обрабатываем название линии перед использованием
         strain = m0.create_collapsed_strain(lineage_input)
-
-        # Используем pipeline для создания графиков
+        # Получение данных
         strain_df = m0.create_strain_df(strain=strain, date=date, df=df_filt)
         kde = m.create_kde(strain_df=strain_df)
         threshold = m.create_threshold(kde=kde, strain_df=strain_df)
-        day_number = m.find_day_number(date=date, start_date=start_date)
+        day_number = m.find_day_number(date=date, start_date=datetime(2020, 1, 1))
 
-        # Построение графика KDE
-        fig1, ax1 = plt.subplots()
-        m.draw_kde(kde=kde, strain=strain, day_number=day_number, strain_df=strain_df)
-        kde_plot = html.Img(src=fig_to_base64(fig1))
+        # Генерация графиков
+        kde_plot = m.draw_kde(kde=kde, strain=strain, day_number=day_number, strain_df=strain_df)
+        morbidity_plot = m.draw_morbidity(strain_df=strain_df, strain=strain, date=date)
+        prediction_plot = m.draw_predictions(kde=kde, strain=strain, strain_df=strain_df, threshold=threshold, day_number=day_number)
 
-        # Построение графика заболеваемости
-        fig2, ax2 = plt.subplots()
-        m.draw_morbidity(strain_df=strain_df, strain=strain, date=date)
-        morbidity_plot = html.Img(src=fig_to_base64(fig2))
-
-        # Построение графика предсказания
-        fig3, ax3 = plt.subplots()
-        m.draw_predictions(kde=kde, strain=strain, strain_df=strain_df, threshold=threshold, day_number=day_number)
-        prediction_plot = html.Img(src=fig_to_base64(fig3))
-
-        return kde_plot, morbidity_plot, prediction_plot
+        # Возврат графиков в формате Plotly для отображения в Dash
+        return dcc.Graph(figure=kde_plot), dcc.Graph(figure=morbidity_plot), dcc.Graph(figure=prediction_plot)
     return None, None, None
-
 if __name__ == '__main__':
     app.run_server(debug=True, port=9998)

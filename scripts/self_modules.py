@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import gaussian_kde
 from datetime import datetime
+import plotly.graph_objects as go
 
 def df_preprocessing(df, start_date):
     df = df[df["Дата забора"] > start_date]
@@ -58,53 +59,68 @@ def correct_or_error_collection_date(day_number, threshold, kde):
     return probability > threshold
 
 def draw_kde(kde, strain, day_number, strain_df):
-    # Генерация числовых значений для оси X (например, все дни c 2020)
+    # Генерация числовых значений для оси X (например, все дни с 2020)
     x = np.arange(start=0, stop=365*5)
     # Оценка плотности для каждого дня в году
     density = kde(x)
-    # Визуализация результатов
-    xmin, xmax = strain_df["дни_с_2020"].min(), strain_df["дни_с_2020"].max()
-    plt.plot(x, density, label='Плотность KDE')
-    plt.xlim(xmin, xmax)
-    plt.xlabel('Номер дня пандемии (начиная с 01.01.2020)')
-    #plt.ylabel('Плотность')
-    plt.title(f'Ядерная оценка плотности для {strain}')
-    plt.legend()
-    plt.axvline(x=day_number, color='r', linestyle='--')
-    plt.show()
     
-def draw_morbidity(strain_df, strain, date):
-    # Оценка вероятности для новых событий
     # Определение границ оси X
-    #print(strain_df.head())
+    xmin, xmax = strain_df["дни_с_2020"].min(), strain_df["дни_с_2020"].max()
+
+    # Создание графика
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=density, mode='lines', name='Плотность KDE'))
+    fig.add_vline(x=day_number, line_color='red', line_dash='dash', name='День события')
+    fig.update_layout(
+        title=f'Ядерная оценка плотности для {strain}',
+        xaxis_title='Номер дня пандемии (начиная с 01.01.2020)',
+        yaxis_title='Плотность',
+        xaxis=dict(range=[xmin, xmax])
+    )
+    return fig  # Возвращаем фигуру вместо ее отображения
+
+def draw_morbidity(strain_df, strain, date):
+    # Определение границ оси X
     xmin_date, xmax_date = strain_df["Дата забора"].min(), strain_df["Дата забора"].max()
-    #xmin, xmax = "2023-10-01", "2024-12-01"
-    strain_df_agg = strain_df.groupby(by="Дата забора").agg({"Pangolin_collapse":"count"})
+    strain_df_agg = strain_df.groupby(by="Дата забора").agg({"Pangolin_collapse": "count"}).reset_index()
+
+    # Создание графика
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=strain_df_agg["Дата забора"], 
+                             y=strain_df_agg["Pangolin_collapse"], 
+                             mode='lines+markers', 
+                             name='Число образцов'))
     
-    print("sasasasasa", strain_df_agg.head())
-    print(strain_df_agg.index) 
-    strain_df_agg.plot(kind="line")
-    #plt.xlim(xmin_date, xmax_date)
-    #plt.ylabel('Число образцов')
-    #plt.title(f'Динамика заболеваемости {strain}')
-    #plt.legend()
-    #plt.axvline(x=date, color='r', linestyle='--')
-    plt.show()
-    
+    fig.update_layout(
+        title=f'Динамика заболеваемости {strain}',
+        xaxis_title='Дата забора',
+        yaxis_title='Число образцов',
+        xaxis=dict(range=[xmin_date, xmax_date])
+    )
+    return fig  # Возвращаем фигуру вместо ее отображения
+
 def draw_predictions(kde, strain, strain_df, threshold, day_number):
     xmin, xmax = strain_df["дни_с_2020"].min(), strain_df["дни_с_2020"].max()
     res = []
+    
     for i in np.arange(xmin, xmax):
         probability = kde(i)
-        #print(f'Вероятность события {new_date_day}: {probability[0]}')
-        #print((probability > threshold)[0])
         res.append((probability > threshold)[0])
-    ax = sns.lineplot(x=[i for i in np.arange(xmin, xmax)], y=res)
-    ax.set_title(f'Предсказание достоверности для {strain}')
-    ax.set_xlabel('Номер дня пандемии (начиная с 01.01.2020)')
-    ax.set_ylabel('True - 1, False - 0')
-    #plt.axvline(x=day_number, color='r', linestyle='--')
-    plt.show()
+    
+    # Создание графика
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=np.arange(xmin, xmax), 
+                             y=res, 
+                             mode='lines', 
+                             name='Предсказания'))
+    
+    fig.update_layout(
+        title=f'Предсказание достоверности для {strain}',
+        xaxis_title='Номер дня пандемии (начиная с 01.01.2020)',
+        yaxis_title='True - 1, False - 0',
+        xaxis=dict(range=[xmin, xmax])
+    )
+    return fig  # Возвращаем фигуру вместо ее отображени
     
 def create_statistics_pipe(strain, date, df, start_date):
     strain_df = create_strain_df(strain=strain, date=date, df=df)
