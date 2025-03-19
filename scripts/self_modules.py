@@ -6,11 +6,13 @@ import seaborn as sns
 from scipy.stats import gaussian_kde
 from datetime import datetime
 import plotly.graph_objects as go
+from importlib.machinery import SourceFileLoader
+m0 = SourceFileLoader("m0", "/export/home/agletdinov/work/git_projects/gitlab/collapse-pango-lineages/modules.py").load_module()
 
 def df_preprocessing(df, start_date):
     df = df[df["Дата забора"] > start_date]
     df.dropna(subset=["Pangolin"], inplace=True)
-    df["Pangolin_collapse"] = df["Pangolin"].apply(lambda x: m.create_collapsed_strain(x.split(" ")[0]))
+    df["Pangolin_collapse"] = df["Pangolin"].apply(lambda x: m0.create_collapsed_strain(x.split(" ")[0]))
     
     start_date = datetime(2020, 1, 1)
 

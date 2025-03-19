@@ -11,7 +11,7 @@ import base64
 import plotly.graph_objs as go
 
 # Загружаем модули
-m0 = SourceFileLoader("m", "/export/home/agletdinov/work/git_projects/gitlab/collapse-pango-lineages/modules.py").load_module()
+m0 = SourceFileLoader("m0", "/export/home/agletdinov/work/git_projects/gitlab/collapse-pango-lineages/modules.py").load_module()
 m = SourceFileLoader("m", "/export/home/agletdinov/work/git_projects/temporary_qualifier-sars_cov_2/scripts/self_modules.py").load_module()
 
 # Путь к данным
@@ -35,7 +35,7 @@ else:
                      dtype={"id последовательности": str,
                             "Pangolin": str},
                      parse_dates=['Дата забора'])
-    df_filt = m0.df_preprocessing(df, start_date=datetime(2020, 1, 1))
+    df_filt = m.df_preprocessing(df, start_date=datetime(2020, 1, 1))
     print(df_filt.shape)
     df_filt.to_csv(to_save,
                    sep="\t",
@@ -46,11 +46,11 @@ else:
 app = dash.Dash(__name__)
 
 app.layout = html.Div([
-    html.H1("SARS-CoV-2 Статистика по линиям"),
+    html.H1("Проверка валидности даты забора биоматериала для SARS-CoV-2"),
     html.Label('Введите название линии:'),
     dcc.Input(id='lineage-input', value='XBB', type='text'),
     html.Br(),
-    html.Label('Введите дату (ГГГГ-ММ-ДД):'),
+    html.Label('Введите дату забора биоматриала (ГГГГ-ММ-ДД):'),
     dcc.Input(id='date-input', value='2022-12-15', type='text'),
     html.Br(),
     html.Button('Построить графики', id='submit-val', n_clicks=0),
@@ -75,7 +75,7 @@ def update_graph(n_clicks, lineage_input, date):
         # Обрабатываем название линии перед использованием
         strain = m0.create_collapsed_strain(lineage_input)
         # Получение данных
-        strain_df = m0.create_strain_df(strain=strain, date=date, df=df_filt)
+        strain_df = m.create_strain_df(strain=strain, date=date, df=df_filt)
         kde = m.create_kde(strain_df=strain_df)
         threshold = m.create_threshold(kde=kde, strain_df=strain_df)
         day_number = m.find_day_number(date=date, start_date=datetime(2020, 1, 1))
